@@ -2,7 +2,7 @@
 
 var fs = require('fs');
 var util = require('util');
-var mustache = require('mustache');
+var handlebars = require('handlebars');
 var markdown = require('markdown').markdown;
 var fsmonitor = require('fsmonitor');
 
@@ -25,6 +25,7 @@ var readDirectory = function(directory, subDirectory) {
 			var data = fs.readFileSync(directory + subDirectory + file, {
 				encoding: 'utf8'
 			});
+
 			files.push({
 				file: subDirectory + file,
 				data: data
@@ -195,9 +196,26 @@ function main() {
 	}
 	content = Content.join(tmp);
 
+	// Parse content TODO
+	for(var i = 0, j = templates.length; i < j; i++) {
+		var data = templates[i].data;
+		try {
+			data = handlebars.compile(data)(content);
+		} catch(e) {
+			// TODO
+		}
+
+		templates[i].data = data;
+	}
+
 	// Parse output
 	for(var i = 0, j = templates.length; i < j; i++) {
-		var data = mustache.to_html(templates[i].data, content);
+		var data = templates[i].data;
+		try {
+			data = handlebars.compile(data)(content);
+		} catch(e) {
+			// TODO
+		}
 
 		output.push({
 			file: templates[i].file,
