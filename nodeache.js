@@ -31,7 +31,7 @@ var readDirectory = function(directory, subDirectory, exclude) {
 	fs.readdirSync(directory + subDirectory).forEach(function(file) {
 		if(fs.statSync(directory + subDirectory + file).isFile() && file !== '.DS_Store') {
 			var ext = file.split('.').reverse()[0];
-
+			
 			var parsable = false;
 			for(var i = 0, j = parsableExt.length; i < j; i++) {
 				if(parsableExt[i] === ext) {
@@ -40,7 +40,7 @@ var readDirectory = function(directory, subDirectory, exclude) {
 			}
 
 			for(var i = 0, j = exclude.length; i < j; i++) {
-				if(exclude[i] === file || internPath.indexOf(exclude[i]) === 0) {
+				if(exclude[i] === internPath + '/' + file || internPath.indexOf(exclude[i]) === 0) {
 					parsable = false;
 				}
 			}
