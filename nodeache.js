@@ -9,6 +9,8 @@ var fsmonitor = require('fsmonitor');
 var command = null;
 var pageFolder = null;
 
+var parsableExt = ['json', 'md', 'markdown', 'html', 'css', 'scss', 'js'];
+
 if(process.argv.length === 3) {
 	pageFolder = process.argv[2];
 } else if(process.argv.length === 4) {
@@ -16,22 +18,50 @@ if(process.argv.length === 3) {
 	pageFolder = process.argv[3];
 }
 
-var readDirectory = function(directory, subDirectory) {
+var readDirectory = function(directory, subDirectory, exclude) {
 	if(subDirectory === undefined) subDirectory = '';
+	if(exclude === undefined) exclude = [];
 	var files = [];
+
+	var internPath = (directory + subDirectory).replace(pageFolder + '/', '');
+	internPath = internPath.split('/');
+	internPath.pop();
+	internPath = internPath.join('/');
 
 	fs.readdirSync(directory + subDirectory).forEach(function(file) {
 		if(fs.statSync(directory + subDirectory + file).isFile() && file !== '.DS_Store') {
-			var data = fs.readFileSync(directory + subDirectory + file, {
-				encoding: 'utf8'
-			});
+			var ext = file.split('.').reverse()[0];
+
+			var parsable = false;
+			for(var i = 0, j = parsableExt.length; i < j; i++) {
+				if(parsableExt[i] === ext) {
+					parsable = true;
+				}
+			}
+
+			for(var i = 0, j = exclude.length; i < j; i++) {
+				if(exclude[i] === file || internPath.indexOf(exclude[i]) === 0) {
+					parsable = false;
+				}
+			}
+
+			var data = '';
+			if(parsable) {
+				data = fs.readFileSync(directory + subDirectory + file, {
+					encoding: 'utf8'
+				});
+			} else {
+				data = fs.readFileSync(directory + subDirectory + file);
+			}
 
 			files.push({
 				file: subDirectory + file,
+				ext: ext,
+				parsable: parsable,
 				data: data
 			});
 		} else if(fs.statSync(directory + subDirectory + file).isDirectory()) {
-			var tmp = readDirectory(directory, subDirectory + file + '/');
+			var tmp = readDirectory(directory, subDirectory + file + '/', exclude);
 
 			for(var i = 0, j = tmp.length; i < j; i++) {
 				files.push(tmp[i]);
@@ -167,20 +197,29 @@ function main() {
 	time += ':' + (start.getMinutes() < 10 ? '0' + start.getMinutes() : start.getMinutes());
 	time += ':' + (start.getSeconds() < 10 ? '0' + start.getSeconds() : start.getSeconds());
 
+
+	var config = [];
+	if(fs.statSync(pageFolder + '/config.json').isFile()) {
+		config = JSON.parse(fs.readFileSync(pageFolder + '/config.json', {
+			encoding: 'utf8'
+		}));
+	}
+
 	var error = false;
 
 	if(fs.existsSync(pageFolder + '/templates/')) {
-		var templates = readDirectory(pageFolder + '/templates/');
+		var templates = readDirectory(pageFolder + '/templates/', '', config.ignore);
 	} else {
 		console.log('[' + time + '] Error: ' + pageFolder + '/templates does not exist.');
 		error = true;
 	}
 	if(fs.existsSync(pageFolder + '/content/')) {
-		var content = readDirectory(pageFolder + '/content/');
+		var content = readDirectory(pageFolder + '/content/', '', config.ignore);
 	} else {
 		console.log('[' + time + '] Error: ' + pageFolder + '/content does not exist.');
 		error = true;
 	}
+
 	var output = [];
 
 	if(error) {
@@ -198,28 +237,36 @@ function main() {
 
 	// Parse content TODO
 	for(var i = 0, j = templates.length; i < j; i++) {
-		var data = templates[i].data;
-		try {
-			data = handlebars.compile(data)(content);
-		} catch(e) {
-			// TODO
-		}
+		if(templates[i].parsable) {
+			var data = templates[i].data;
 
-		templates[i].data = data;
+			try {
+				data = handlebars.compile(data)(content);
+			} catch(e) {
+				// TODO
+			}
+
+			templates[i].data = data;
+		}
 	}
 
 	// Parse output
 	for(var i = 0, j = templates.length; i < j; i++) {
 		var data = templates[i].data;
-		try {
-			data = handlebars.compile(data)(content);
-		} catch(e) {
-			// TODO
+
+		if(templates[i].parsable) {
+			try {
+				data = handlebars.compile(data)(content);
+				data = data.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x2F;/g, '/').replace(/&quot;/g, '"');
+			} catch(e) {
+				// TODO
+			}
 		}
 
 		output.push({
 			file: templates[i].file,
-			data: data.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x2F;/g, '/').replace(/&quot;/g, '"')
+			parsable: templates[i].parsable,
+			data: data
 		});
 	}
 
@@ -234,6 +281,7 @@ function main() {
 		directory = directory.join('/');
 
 		mkdirRecursive(directory);
+		
 		fs.writeFileSync(path, output[i].data);
 	}
 
