@@ -7,9 +7,6 @@ var markdown = require('markdown').markdown;
 var fsmonitor = require('fsmonitor');
 var JSFtp = require('jsftp');
 
-var command = null;
-var pageFolder = null;
-
 var parsableExt = ['json', 'md', 'markdown', 'html', 'css', 'scss', 'js'];
 var msgs = {
 	usage: function() {return 'Usage: nodeache folder\n       nodeache dev folder\n       nodeache publish folder\n'},
@@ -29,6 +26,9 @@ var msgs = {
 		}
 	}
 };
+
+var command = null;
+var pageFolder = null;
 
 if(process.argv.length === 3) {
 	pageFolder = process.argv[2];
@@ -308,59 +308,60 @@ function main() {
 	util.print(msgs.done());
 }
 
-// FTP
-function mkd(file, ftp, callback, index_) {
-	var dirs = file.split('/');
-	dirs.pop();
-
-	var index = 0;
-	if(index_) index = index_;
-	
-	var wd = '/';
-	for(var i = 0; i < index; i++) {
-		wd += dirs[i] + '/';
-	}
-
-	ftp.raw.cwd(wd, function(err, data) {
-		ftp.raw.mkd(dirs[index], function(err, data) {
-			// if (err) console.error(err);
-
-			ftp.raw.cwd(wd, function(err, data) {
-				// if (err) console.error(err);
-
-				if(index < dirs.length) {
-					mkd(file, ftp, callback, index+1);
-				} else {
-					if(callback) callback();
-				}
-			});
-		});
-	});
-	
-}
-
-// FTP
-function upload(file, ftp, callback) {
-	mkd(file, ftp, function() {
-		ftp.raw.cwd('/', function(err, data) {
-			ftp.put(pageFolder + '/output/' + file, file, function(hadError) {
-				if(hadError) {
-					// util.print(hadError);
-				}
-
-				if(callback) callback();
-			});
-		});
-		
-	});
-}
-
 var config = [];
 if(fs.existsSync(pageFolder + '/config.json') && fs.statSync(pageFolder + '/config.json').isFile()) {
 	config = JSON.parse(fs.readFileSync(pageFolder + '/config.json', {
 		encoding: 'utf8'
 	}));
 }
+
+var ftpHelper = (function() {
+	return {
+		upload: function (file, ftp, callback) {
+			ftpHelper.mkd(file, ftp, function() {
+				ftp.raw.cwd('/', function(err, data) {
+					ftp.put(pageFolder + '/output/' + file, file, function(hadError) {
+						if(hadError) {
+							// TODO
+						}
+
+						if(callback) callback();
+					});
+				});
+				
+			});
+		},
+
+		mkd: function(file, ftp, callback, index_) {
+			var dirs = file.split('/');
+			dirs.pop();
+
+			var index = 0;
+			if(index_) index = index_;
+			
+			var wd = '/';
+			for(var i = 0; i < index; i++) {
+				wd += dirs[i] + '/';
+			}
+
+			ftp.raw.cwd(wd, function(err, data) {
+				ftp.raw.mkd(dirs[index], function(err, data) {
+					// if (err) console.error(err);
+
+					ftp.raw.cwd(wd, function(err, data) {
+						// if (err) console.error(err);
+
+						if(index < dirs.length) {
+							mkd(file, ftp, callback, index+1);
+						} else {
+							if(callback) callback();
+						}
+					});
+				});
+			});
+		}
+	}
+})();
 
 if(!pageFolder) {
 	util.print(msgs.usage());
@@ -396,7 +397,7 @@ if(!pageFolder) {
 					i++;
 
 					if(i < files.length) {
-						upload(files[i].file, ftp, callback);
+						ftpHelper.upload(files[i].file, ftp, callback);
 					} else {
 						util.print(msgs.done());
 						util.print(msgs.ftp.disconnecting());
@@ -409,7 +410,7 @@ if(!pageFolder) {
 				util.print(msgs.ftp.uploading);
 				var files = readDirectory(pageFolder + '/output/', '', config.ignore, false);
 				var i = 0;
-				upload(files[i].file, ftp, callback);
+				ftpHelper.upload(files[i].file, ftp, callback);
 			});
 		} else {
 			util.print(msgs.err.ftp.authData());
