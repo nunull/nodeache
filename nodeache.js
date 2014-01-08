@@ -11,6 +11,24 @@ var command = null;
 var pageFolder = null;
 
 var parsableExt = ['json', 'md', 'markdown', 'html', 'css', 'scss', 'js'];
+var msgs = {
+	usage: function() {return 'Usage: nodeache folder\n       nodeache dev folder\n       nodeache publish folder\n'},
+	parsing: function() {return getTimeFormatted() + ' Parsing \'' + pageFolder + '\'... '},
+	done: function() {return 'done.\n'},
+	ftp: {
+		connecting: function() {return getTimeFormatted() + ' Connecting to \'' + config.ftp.host + '\'... '},
+		disconnecting: function() {return getTimeFormatted() + ' Disconnecting from \'' + config.ftp.host + '\'... '},
+		uploading: function() {return getTimeFormatted() + ' Uploading to \'' + config.ftp.host + '\'... '}
+	},
+	err: {
+		pageDir: function() {return getTimeFormatted() + ' Error: ' + pageFolder + ' does not exist.\n'},
+		templateDir: function() {return getTimeFormatted() + ' Error: ' + pageFolder + '/templates does not exist.\n'},
+		contentDir: function() {return getTimeFormatted() + ' Error: ' + pageFolder + '/content does not exist.\n'},
+		ftp: {
+			authData: function() {return 'Error: authentification-data for FTP is not specfied.\n'}
+		}
+	}
+};
 
 if(process.argv.length === 3) {
 	pageFolder = process.argv[2];
@@ -212,13 +230,13 @@ function main() {
 	if(fs.existsSync(pageFolder + '/templates/')) {
 		var templates = readDirectory(pageFolder + '/templates/', '', config.ignore, true);
 	} else {
-		console.log(getTimeFormatted() + ' Error: ' + pageFolder + '/templates does not exist.');
+		util.print(msgs.err.templateDir());
 		error = true;
 	}
 	if(fs.existsSync(pageFolder + '/content/')) {
 		var content = readDirectory(pageFolder + '/content/', '', config.ignore, true);
 	} else {
-		console.log(getTimeFormatted() + ' Error: ' + pageFolder + '/content does not exist.');
+		util.print(msgs.err.contentDir());
 		error = true;
 	}
 
@@ -228,7 +246,7 @@ function main() {
 		return false;
 	}
 
-	util.print(getTimeFormatted() + ' Parsing \'' + pageFolder + '\'... ');
+	util.print(msgs.parsing());
 
 	// Parse content
 	var tmp = [];
@@ -287,7 +305,7 @@ function main() {
 		fs.writeFileSync(path, output[i].data);
 	}
 
-	console.log('done.');
+	util.print(msgs.done());
 }
 
 // FTP
@@ -327,7 +345,7 @@ function upload(file, ftp, callback) {
 		ftp.raw.cwd('/', function(err, data) {
 			ftp.put(pageFolder + '/output/' + file, file, function(hadError) {
 				if(hadError) {
-					// console.log(hadError);
+					// util.print(hadError);
 				}
 
 				if(callback) callback();
@@ -345,11 +363,9 @@ if(fs.existsSync(pageFolder + '/config.json') && fs.statSync(pageFolder + '/conf
 }
 
 if(!pageFolder) {
-	console.log('Usage: nodeache folder');
-	console.log('       nodeache dev folder');
-	console.log('       nodeache publish folder');
+	util.print(msgs.usage());
 } else if(!fs.existsSync(pageFolder)) {
-	console.log(getTimeFormatted() + ' Error: ' + pageFolder + ' does not exist.');
+	util.print(msgs.err.pageDir());
 } else if(command) {
 	if(command === 'dev') {
 		main();
@@ -366,7 +382,7 @@ if(!pageFolder) {
 		main();
 
 		if(config.ftp.host && config.ftp.user && config.ftp.password) {
-			util.print(getTimeFormatted() + ' Connecting to \'' + config.ftp.host + '\'... ');
+			util.print(msgs.ftp.connecting());
 
 			var ftp = new JSFtp({
 				host: config.ftp.host,
@@ -374,7 +390,7 @@ if(!pageFolder) {
 			});
 
 			ftp.auth(config.ftp.user, config.ftp.password, function(err) {
-				console.log('done.');
+				util.print(msgs.done());
 
 				var callback = function() {
 					i++;
@@ -382,21 +398,21 @@ if(!pageFolder) {
 					if(i < files.length) {
 						upload(files[i].file, ftp, callback);
 					} else {
-						console.log('done.');
-						util.print(getTimeFormatted() + ' Disconnecting from \'' + config.ftp.host + '\'... ');
+						util.print(msgs.done());
+						util.print(msgs.ftp.disconnecting());
 						ftp.raw.quit(function(err, data) {
-							console.log('done.');
+							util.print(msgs.done());
 						});
 					}
 				};
 
-				util.print(getTimeFormatted() + ' Uploading to \'' + config.ftp.host + '\'... ');
+				util.print(msgs.ftp.uploading);
 				var files = readDirectory(pageFolder + '/output/', '', config.ignore, false);
 				var i = 0;
 				upload(files[i].file, ftp, callback);
 			});
 		} else {
-			console.log('Error: authentification-data for FTP is not specfied.')
+			util.print(msgs.err.ftp.authData());
 		}
 	}
 } else {
