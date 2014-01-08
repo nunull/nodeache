@@ -5,6 +5,7 @@ var util = require('util');
 var handlebars = require('handlebars');
 var markdown = require('markdown').markdown;
 var fsmonitor = require('fsmonitor');
+var JSFtp = require('jsftp');
 
 var command = null;
 var pageFolder = null;
@@ -18,7 +19,16 @@ if(process.argv.length === 3) {
 	pageFolder = process.argv[3];
 }
 
-var readDirectory = function(directory, subDirectory, exclude) {
+function getTimeFormatted() {
+	var d = new Date();
+	var time = (d.getHours() < 10 ? '0' + d.getHours() : d.getHours());
+	time += ':' + (d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes());
+	time += ':' + (d.getSeconds() < 10 ? '0' + d.getSeconds() : d.getSeconds());
+
+	return '[' + time + ']';
+}
+
+var readDirectory = function(directory, subDirectory, exclude, readData) {
 	if(subDirectory === undefined) subDirectory = '';
 	if(exclude === undefined) exclude = [];
 	var files = [];
@@ -31,7 +41,7 @@ var readDirectory = function(directory, subDirectory, exclude) {
 	fs.readdirSync(directory + subDirectory).forEach(function(file) {
 		if(fs.statSync(directory + subDirectory + file).isFile() && file !== '.DS_Store') {
 			var ext = file.split('.').reverse()[0];
-			
+
 			var parsable = false;
 			for(var i = 0, j = parsableExt.length; i < j; i++) {
 				if(parsableExt[i] === ext) {
@@ -46,12 +56,17 @@ var readDirectory = function(directory, subDirectory, exclude) {
 			}
 
 			var data = '';
-			if(parsable) {
-				data = fs.readFileSync(directory + subDirectory + file, {
-					encoding: 'utf8'
-				});
+
+			if(readData) {
+				if(parsable) {
+					data = fs.readFileSync(directory + subDirectory + file, {
+						encoding: 'utf8'
+					});
+				} else {
+					data = fs.readFileSync(directory + subDirectory + file);
+				}
 			} else {
-				data = fs.readFileSync(directory + subDirectory + file);
+				data = undefined;
 			}
 
 			files.push({
@@ -61,7 +76,7 @@ var readDirectory = function(directory, subDirectory, exclude) {
 				data: data
 			});
 		} else if(fs.statSync(directory + subDirectory + file).isDirectory()) {
-			var tmp = readDirectory(directory, subDirectory + file + '/', exclude);
+			var tmp = readDirectory(directory, subDirectory + file + '/', exclude, readData);
 
 			for(var i = 0, j = tmp.length; i < j; i++) {
 				files.push(tmp[i]);
@@ -192,31 +207,18 @@ var Content = (function() {
 
 // The main-functionality
 function main() {
-	var start = new Date();
-	var time = (start.getHours() < 10 ? '0' + start.getHours() : start.getHours());
-	time += ':' + (start.getMinutes() < 10 ? '0' + start.getMinutes() : start.getMinutes());
-	time += ':' + (start.getSeconds() < 10 ? '0' + start.getSeconds() : start.getSeconds());
-
-
-	var config = [];
-	if(fs.statSync(pageFolder + '/config.json').isFile()) {
-		config = JSON.parse(fs.readFileSync(pageFolder + '/config.json', {
-			encoding: 'utf8'
-		}));
-	}
-
 	var error = false;
 
 	if(fs.existsSync(pageFolder + '/templates/')) {
-		var templates = readDirectory(pageFolder + '/templates/', '', config.ignore);
+		var templates = readDirectory(pageFolder + '/templates/', '', config.ignore, true);
 	} else {
-		console.log('[' + time + '] Error: ' + pageFolder + '/templates does not exist.');
+		console.log(getTimeFormatted() + ' Error: ' + pageFolder + '/templates does not exist.');
 		error = true;
 	}
 	if(fs.existsSync(pageFolder + '/content/')) {
-		var content = readDirectory(pageFolder + '/content/', '', config.ignore);
+		var content = readDirectory(pageFolder + '/content/', '', config.ignore, true);
 	} else {
-		console.log('[' + time + '] Error: ' + pageFolder + '/content does not exist.');
+		console.log(getTimeFormatted() + ' Error: ' + pageFolder + '/content does not exist.');
 		error = true;
 	}
 
@@ -226,7 +228,7 @@ function main() {
 		return false;
 	}
 
-	util.print('[' + time + '] Parsing "' + pageFolder + '"... ');
+	util.print(getTimeFormatted() + ' Parsing \'' + pageFolder + '\'... ');
 
 	// Parse content
 	var tmp = [];
@@ -288,15 +290,66 @@ function main() {
 	console.log('done.');
 }
 
+// FTP
+function mkd(file, ftp, callback, index_) {
+	var dirs = file.split('/');
+	dirs.pop();
+
+	var index = 0;
+	if(index_) index = index_;
+	
+	var wd = '/';
+	for(var i = 0; i < index; i++) {
+		wd += dirs[i] + '/';
+	}
+
+	ftp.raw.cwd(wd, function(err, data) {
+		ftp.raw.mkd(dirs[index], function(err, data) {
+			// if (err) console.error(err);
+
+			ftp.raw.cwd(wd, function(err, data) {
+				// if (err) console.error(err);
+
+				if(index < dirs.length) {
+					mkd(file, ftp, callback, index+1);
+				} else {
+					if(callback) callback();
+				}
+			});
+		});
+	});
+	
+}
+
+// FTP
+function upload(file, ftp, callback) {
+	mkd(file, ftp, function() {
+		ftp.raw.cwd('/', function(err, data) {
+			ftp.put(pageFolder + '/output/' + file, file, function(hadError) {
+				if(hadError) {
+					// console.log(hadError);
+				}
+
+				if(callback) callback();
+			});
+		});
+		
+	});
+}
+
+var config = [];
+if(fs.existsSync(pageFolder + '/config.json') && fs.statSync(pageFolder + '/config.json').isFile()) {
+	config = JSON.parse(fs.readFileSync(pageFolder + '/config.json', {
+		encoding: 'utf8'
+	}));
+}
+
 if(!pageFolder) {
 	console.log('Usage: nodeache folder');
 	console.log('       nodeache dev folder');
+	console.log('       nodeache publish folder');
 } else if(!fs.existsSync(pageFolder)) {
-	var start = new Date();
-	var time = (start.getHours() < 10 ? '0' + start.getHours() : start.getHours());
-	time += ':' + (start.getMinutes() < 10 ? '0' + start.getMinutes() : start.getMinutes());
-	time += ':' + (start.getSeconds() < 10 ? '0' + start.getSeconds() : start.getSeconds());
-	console.log('[' + time + '] Error: ' + pageFolder + ' does not exist.');
+	console.log(getTimeFormatted() + ' Error: ' + pageFolder + ' does not exist.');
 } else if(command) {
 	if(command === 'dev') {
 		main();
@@ -309,6 +362,42 @@ if(!pageFolder) {
 
 		fsmonitor.watch(pageFolder + '/templates/', null, onFileChange);
 		fsmonitor.watch(pageFolder + '/content/', null, onFileChange);
+	} else if(command === 'publish') {
+		main();
+
+		if(config.ftp.host && config.ftp.user && config.ftp.password) {
+			util.print(getTimeFormatted() + ' Connecting to \'' + config.ftp.host + '\'... ');
+
+			var ftp = new JSFtp({
+				host: config.ftp.host,
+				port: 21
+			});
+
+			ftp.auth(config.ftp.user, config.ftp.password, function(err) {
+				console.log('done.');
+
+				var callback = function() {
+					i++;
+
+					if(i < files.length) {
+						upload(files[i].file, ftp, callback);
+					} else {
+						console.log('done.');
+						util.print(getTimeFormatted() + ' Disconnecting from \'' + config.ftp.host + '\'... ');
+						ftp.raw.quit(function(err, data) {
+							console.log('done.');
+						});
+					}
+				};
+
+				util.print(getTimeFormatted() + ' Uploading to \'' + config.ftp.host + '\'... ');
+				var files = readDirectory(pageFolder + '/output/', '', config.ignore, false);
+				var i = 0;
+				upload(files[i].file, ftp, callback);
+			});
+		} else {
+			console.log('Error: authentification-data for FTP is not specfied.')
+		}
 	}
 } else {
 	main();
