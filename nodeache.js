@@ -4,6 +4,7 @@ var fs = require('fs');
 var util = require('util');
 var handlebars = require('handlebars');
 var markdown = require('markdown').markdown;
+var sass = require('node-sass');
 var fsmonitor = require('fsmonitor');
 var JSFtp = require('jsftp');
 
@@ -257,6 +258,25 @@ function main() {
 
 	// Parse content TODO
 	for(var i = 0, j = templates.length; i < j; i++) {
+		if(templates[i].ext === 'scss' && config.parse.sass) {
+			var outputStyle = 'nested';
+			if(config.parse.sass === 'compressed') outputStyle = 'compressed';
+
+			templates[i].data = sass.renderSync({
+				data: templates[i].data,
+				outputStyle: outputStyle // TODO do not use it, see https://github.com/andrew/node-sass#outputstyle
+			});
+
+			// console.log(templates[i].file);
+			var file = templates[i].file;
+			file = file.split('.');
+			file.pop();
+			file.push('min');
+			file.push('css');
+			file = file.join('.');
+			templates[i].file = file;
+		}
+
 		if(templates[i].parsable) {
 			var data = templates[i].data;
 

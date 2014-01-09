@@ -1,7 +1,7 @@
 {
 	"name": "nodeache",
 	"description": "A static-webpage-generator based on node.js using mustaches, markdown and JSON.",
-	"version": "0.2.1",
+	"version": "0.3.0",
 	"homepage": "https://github.com/nunull/nodeache",
 	"keywords": [
 		"nodeache",
@@ -32,7 +32,8 @@
 		"handlebars": "1.3.0",
 		"markdown": "0.5.0",
 		"fsmonitor": "0.2.2",
-		"jsftp": "1.2.1"
+		"jsftp": "1.2.1",
+		"node-sass": "0.7.0"
 	},
 	"devDependencies": {},
 	"private": false
