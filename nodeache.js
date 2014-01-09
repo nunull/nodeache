@@ -482,7 +482,7 @@ if(!pageFolder && command !== 'info') {
 					}
 				};
 
-				util.print(msgs.ftp.uploading);
+				util.print(msgs.ftp.uploading());
 				var files = readDirectory(pageFolder + '/output/', '', config.ignore, false);
 				var i = 0;
 				ftpHelper.upload(files[i].file, ftp, callback);
