@@ -13,15 +13,15 @@ Usage
 
 Building a website:
 
-    nodeache folder
+    $ nodeache folder
     
 Rebuilding a website everytime a file or folder has changed:
 
-    nodeache dev folder
+    $ nodeache dev folder
     
 Publishing a website via FTP:
 
-    nodeache publish folder
+    $ nodeache publish folder
     
 Where folder is a *folder* following the structure given under *Folder structure*.
 
