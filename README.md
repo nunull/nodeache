@@ -7,6 +7,7 @@ A static-webpage-generator based on node.js using mustaches, markdown and JSON.
 * Publishing via FTP
 
 NPM-package: [npmjs.org/package/nodeache](https://npmjs.org/package/nodeache)
+
 Bugs: [/nunull/nodeache/issues](https://github.com/nunull/nodeache/issues)
 
 
