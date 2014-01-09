@@ -3,8 +3,8 @@ nodeache
 
 A static-webpage-generator based on node.js using mustaches, markdown and JSON.
 
-* Realtime editing.
-* Publishing via FTP.
+* Realtime editing
+* Publishing via FTP
 
 Installation
 ------------
