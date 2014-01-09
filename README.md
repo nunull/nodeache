@@ -6,6 +6,8 @@ A static-webpage-generator based on node.js using mustaches, markdown and JSON.
 * Realtime editing
 * Publishing via FTP
 
+[npm-package](https://npmjs.org/package/nodeache)
+
 Installation
 ------------
 
