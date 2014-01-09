@@ -10,10 +10,13 @@ var CleanCSS = require('clean-css');
 var UglifyJS = require("uglify-js");
 var fsmonitor = require('fsmonitor');
 var JSFtp = require('jsftp');
+var pkg = require('./package.json');
 
 var parsableExt = ['json', 'md', 'markdown', 'html', 'css', 'scss', 'js'];
 var msgs = {
-	usage: function() {return 'Usage: nodeache folder\n       nodeache dev folder\n       nodeache publish folder\n'},
+	welcome: function() {return pkg.name + '   v' + pkg.version + '\n';},
+	info: function() {return 'Copyright: (' + pkg.licenses + ') 2014 ' + pkg.author.name + '\n'},
+	usage: function() {return 'Usage: nodeache folder\n       nodeache dev folder\n       nodeache publish folder\n       nodeache info\n'},
 	parsing: function() {return getTimeFormatted() + ' Parsing \'' + pageFolder + '\'... '},
 	serverRunning: function() {return getTimeFormatted() + ' Server running at \'http://localhost:8008\'.\n'},
 	done: function() {return 'done.\n'},
@@ -40,6 +43,10 @@ if(process.argv.length === 3) {
 } else if(process.argv.length === 4) {
 	command = process.argv[2];
 	pageFolder = process.argv[3];
+}
+if(pageFolder === 'info') {
+	command = pageFolder;
+	pageFolder = null;
 }
 
 function getTimeFormatted() {
@@ -434,9 +441,11 @@ var localhost = (function() {
 	};
 })();
 
-if(!pageFolder) {
+util.print(msgs.welcome());
+
+if(!pageFolder && command !== 'info') {
 	util.print(msgs.usage());
-} else if(!fs.existsSync(pageFolder)) {
+} else if(!fs.existsSync(pageFolder) && command !== 'info') {
 	util.print(msgs.err.pageDir());
 } else if(command) {
 	if(command === 'dev') {
@@ -481,6 +490,8 @@ if(!pageFolder) {
 		} else {
 			util.print(msgs.err.ftp.authData());
 		}
+	} else if(command === 'info') {
+		util.print(msgs.info());
 	}
 } else {
 	main();
