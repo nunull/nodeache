@@ -6,6 +6,7 @@ var handlebars = require('handlebars');
 var markdown = require('markdown').markdown;
 var sass = require('node-sass');
 var CleanCSS = require('clean-css');
+var UglifyJS = require("uglify-js");
 var fsmonitor = require('fsmonitor');
 var JSFtp = require('jsftp');
 
@@ -283,6 +284,20 @@ function main() {
 			file.push('css');
 			file = file.join('.');
 			templates[i].file = file;
+		} else if(templates[i].ext === 'js' && config.parse.js === 'compressed') {
+			if(templates[i].file.indexOf('.min.js') < 0) {
+				templates[i].data = UglifyJS.minify(templates[i].data+'', {
+					fromString: true
+				}).code;
+
+				var file = templates[i].file;
+				file = file.split('.');
+				file.pop();
+				file.push('min');
+				file.push(templates[i].ext);
+				file = file.join('.');
+				templates[i].file = file;
+			}
 		}
 
 		if(templates[i].parsable) {
