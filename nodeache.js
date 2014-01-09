@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 var fs = require('fs');
+var http = require('http');
 var util = require('util');
 var handlebars = require('handlebars');
 var markdown = require('markdown').markdown;
@@ -14,6 +15,7 @@ var parsableExt = ['json', 'md', 'markdown', 'html', 'css', 'scss', 'js'];
 var msgs = {
 	usage: function() {return 'Usage: nodeache folder\n       nodeache dev folder\n       nodeache publish folder\n'},
 	parsing: function() {return getTimeFormatted() + ' Parsing \'' + pageFolder + '\'... '},
+	serverRunning: function() {return getTimeFormatted() + ' Server running at \'http://localhost:8008\'.\n'},
 	done: function() {return 'done.\n'},
 	ftp: {
 		connecting: function() {return getTimeFormatted() + ' Connecting to \'' + config.ftp.host + '\'... '},
@@ -274,7 +276,7 @@ function main() {
 			templates[i].file = file;
 		}
 		if((templates[i].ext === 'css' && config.parse.css === 'compressed') || 
-					(templates[i].ext === 'scss' && config.parse.sass === 'compressed')) {
+					(templates[i].ext === 'scss' && config.parse.sass === 'compressed') && config.debug !== true) {
 			templates[i].data = new CleanCSS().minify(templates[i].data);
 
 			var file = templates[i].file;
@@ -284,7 +286,7 @@ function main() {
 			file.push('css');
 			file = file.join('.');
 			templates[i].file = file;
-		} else if(templates[i].ext === 'js' && config.parse.js === 'compressed') {
+		} else if(templates[i].ext === 'js' && config.parse.js === 'compressed' && config.debug !== true) {
 			if(templates[i].file.indexOf('.min.js') < 0) {
 				templates[i].data = UglifyJS.minify(templates[i].data+'', {
 					fromString: true
@@ -406,12 +408,39 @@ var ftpHelper = (function() {
 	}
 })();
 
+var localhost = (function() {
+	return {
+		boot: function() {
+			http.createServer(function (req, res) {
+				var url = req.url;
+				if(url === '/') url = '/index.html';
+				url = pageFolder + '/output' + url;
+
+				var code = 200;
+				var data = '';
+				try {
+					data = fs.readFileSync(url);
+				} catch(e) {
+					code = 404;
+				}
+
+				res.writeHead(code);
+				res.end(data);
+
+				console.log(getTimeFormatted() + ' Client request: \'' + url + '\' (' + code + ').');
+			}).listen(8008, '127.0.0.1');
+			util.print(msgs.serverRunning());
+		}
+	};
+})();
+
 if(!pageFolder) {
 	util.print(msgs.usage());
 } else if(!fs.existsSync(pageFolder)) {
 	util.print(msgs.err.pageDir());
 } else if(command) {
 	if(command === 'dev') {
+		localhost.boot();
 		main();
 		
 		var onFileChange = function(change) {
