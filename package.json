@@ -1,7 +1,7 @@
 {
 	"name": "nodeache",
 	"description": "A static-webpage-generator based on node.js using mustaches, markdown and JSON.",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"homepage": "https://github.com/nunull/nodeache",
 	"keywords": [
 		"nodeache",

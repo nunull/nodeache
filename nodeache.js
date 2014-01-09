@@ -442,15 +442,9 @@ if(!pageFolder) {
 	if(command === 'dev') {
 		localhost.boot();
 		main();
-		
-		var onFileChange = function(change) {
-			if(change.modifiedFiles.length > 0) {
-				main();
-			}
-		};
 
-		fsmonitor.watch(pageFolder + '/templates/', null, onFileChange);
-		fsmonitor.watch(pageFolder + '/content/', null, onFileChange);
+		fsmonitor.watch(pageFolder + '/templates/', null, main);
+		fsmonitor.watch(pageFolder + '/content/', null, main);
 	} else if(command === 'publish') {
 		main();
 
