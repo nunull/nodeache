@@ -404,7 +404,7 @@ var ftpHelper = (function() {
 						// if (err) console.error(err);
 
 						if(index < dirs.length) {
-							ftp.mkd(file, ftp, callback, index+1);
+							ftpHelper.mkd(file, ftp, callback, index+1);
 						} else {
 							if(callback) callback();
 						}
