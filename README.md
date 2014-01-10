@@ -62,3 +62,15 @@ Content can be included via the syntax of [handlebars.js](http://handlebarsjs.co
 
 config.json
 -----------
+
+*Example file:*
+
+    {
+        "ignore": ["templates/imgs"],
+        "debug": false,
+        "parse": {
+            "js": "compressed",
+            "css": "compressed",
+            "sass": "compressed"
+        }
+    }
