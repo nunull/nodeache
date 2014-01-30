@@ -367,6 +367,9 @@ if(fs.existsSync(pageFolder + '/config.json') && fs.statSync(pageFolder + '/conf
 	}));
 }
 
+/*
+ * Provides helping functions for FTP.
+ */
 var ftpHelper = (function() {
 	return {
 		upload: function (file, ftp, callback) {
