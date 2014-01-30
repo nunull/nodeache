@@ -1,0 +1,9 @@
+{
+    "ignore": ["templates/imgs"],
+    "debug": false,
+    "parse": {
+        "js": "compressed",
+        "css": "compressed",
+        "sass": "compressed"
+    }
+}
