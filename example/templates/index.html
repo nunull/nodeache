@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>{{site-name}}</title>
+		<link type="text/css" rel="stylesheet" href="css/main.css">
+	</head>
+	<body>
+		<nav>
+			{{#pages}}
+				<a>{{name}}</a>
+			{{/pages}}
+		</nav>
+
+		{{#articles}}
+			<article>
+				<h1>{{name}}</h1>
+				{{data}}
+			</article>
+		{{/articles}}
+	</body>
+</html>
