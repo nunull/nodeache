@@ -186,6 +186,10 @@ var Content = (function() {
 			var ret = {};
 			if(ext === 'md') {
 				ret[name] = markdown.toHTML(content.data);
+				ret[name] = ret[name]
+						.replace(/&lt;/g, '<')
+						.replace(/&gt;/g, '>')
+						.replace(/&quot;/g, '"');
 				
 				return ret;
 			} else if(ext === 'json') {
